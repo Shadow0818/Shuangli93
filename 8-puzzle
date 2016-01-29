@@ -1,0 +1,635 @@
+import java.io.FileReader;  //import libraries
+import java.io.IOException;
+import java.util.Scanner;
+
+import javax.swing.JOptionPane;
+
+	public class EightPuzzle extends main{
+	
+	/*
+	 * use to initialize variables
+	 */
+	public static void createlink(String [] args){
+		lock = false;		// global variables
+		easy = args[0];
+		medium = args[1];
+		hard = args[2];
+		worst = args[3];
+		path = args[4];
+		p = new LinkedList();
+		open = new LinkedList();
+		close = new LinkedList();
+		numCount = 0;
+		LoadManhattan();
+		EightPuzzle.MakingGoalState(); 
+		}
+	
+	/*
+	 * allow user to enter their own states:
+	 */
+	public static void MakingGoalState(){
+		if (lock) {
+			String g = JOptionPane.showInputDialog("Please Enter 0 - 9 without space Ex:150732846");
+			while(checkString(g)){
+				g = JOptionPane.showInputDialog("Please Enter 9 number from 0 to 9!");
+			}
+			start = g;
+			String in = JOptionPane.showInputDialog("Please Enter the method number, manhattan/heuristic/IDA/DFB");
+			if (in.equalsIgnoreCase("manhattan")){
+				AstarManhattan(in);
+			}
+		}
+		GoalState = "123804765";
+	}
+	
+	/*
+	 * Make sure the string user enter is legal
+	 */
+	public static boolean checkString(String in){
+		int[] ar = new int [in.length()];
+		for (int k = 0; k < in.length(); k++){
+			ar[k] = 0;
+		}
+		boolean c = true;
+		int count = 0;
+		if (in.length() == 9 || in.contains("[0-8]+")){
+			for (int i = 0; i < 9 ; i++){
+				ar[Character.getNumericValue(in.charAt(i))] = 1;
+			}
+			
+			for (int j = 0; j < 9; j++){
+				if (ar[j] == 1){
+					count++;
+				}
+				else System.out.println("Error in String");
+			}
+			if (count == 9){
+				c = false;
+			}
+			return c;
+		}
+		else return true;
+	}
+	
+	
+	/*
+	 * During this stage, each string represents an stage and place on 
+	 * the top of the head list. 
+	 */
+	public static void OpenState(String s, int cost, int fcost, Listnode p){
+		Listnode move = open.Listhead;
+		Listnode node = new Listnode(s, cost, fcost, p);
+		while(move.next != null && node.fcost > move.next.fcost){
+			move = move.next;
+		}
+		node.setNext(move.next);
+		move.setNext(node);
+	}
+	
+	
+	
+	/*
+	 * method to read the file and puts the string into one line.
+	 * representing one set of stage.
+	 */
+	
+	public static void readPuzzle(String inputFileName){
+		try{
+	
+	Scanner b = new Scanner(new FileReader(inputFileName));
+	start = "";
+	while (b.hasNext()){
+		start = start+b.nextInt();
+	}
+	b.close();
+	}
+		catch(IOException IOS){
+			System.out.println("Error in File");
+		}
+	}	
+	
+	/*
+	 * after the goal state is found, calculating path will start 
+	 * looking upward for the parent to find the path to goal. 
+	 */
+	
+	public static void calculatingpath (Listnode pa){
+		Listnode c = pa;
+		while (c != null){
+			Listnode nw = new Listnode (c.data);
+			Listnode move = p.Listhead;
+			nw.setNext(move.next);
+			move.setNext(nw);
+			c = c.parent;
+		}
+		
+	}
+	
+	/*
+	 * out the shortest path and print the result
+	 */
+	public static void print(){
+		int [] array = new int [9];
+		int numberofMoves = 0;
+		System.out.println("Sequence from starting stage to goal stage:");
+		Listnode move = p.Listhead.next;
+		while(move.next != null){
+			System.out.println("");
+			String tile = move.data;
+			for (int i = 0; i < tile.length(); i++){
+				array[i]= Character.getNumericValue(tile.charAt(i));
+			}
+			
+			for (int j = 0; j < tile.length(); j++){
+				System.out.print(array[j] + " ");
+				if (j == 2 || j == 5){
+					System.out.println("");
+				}
+			}
+			System.out.println("");
+			move = move.next;
+			numberofMoves++;
+		}
+		System.out.println("");
+		for (int k = 0; k < GoalState.length(); k++){
+			array[k]= Character.getNumericValue(GoalState.charAt(k));
+		}
+		for (int j = 0; j < GoalState.length(); j++){
+			System.out.print(array[j] + " ");
+			if (j == 2 || j == 5){
+				System.out.println("");
+			}
+		}
+		System.out.println("");
+		System.out.println("Total number of moves:   " + numberofMoves);
+		
+	}
+	
+	/*
+	 * Checks if the node is in open - linked list 
+	 * returns true if there is, else false.
+	 */
+	
+	public static boolean isopen (String s){
+		int c = 0;
+		String t = "";
+		Listnode move = open.Listhead.next;
+		while (move != null){
+			c = 0;
+			t = move.data;
+			for (int x = 0; x < s.length(); x++){
+				if (s.charAt(x) != t.charAt(x)){
+					c++;
+				}
+			}
+			if (c == 0){
+				return true;
+			}
+			move = move.next;
+		}
+		return false;
+	}
+	
+	/*
+	 * Set a 2-d array where if the current state is in the correct place, 
+	 * set true, else set false 
+	 */
+	public static int truthtable(){
+		boolean[][] truth = new boolean[3][3];
+		int col = 0;
+		int row = 0;
+		for(int i = 0; i < GoalState.length(); i++){
+			row = i / 3;
+			col = 1 % 3;
+			if(start.charAt(i) == GoalState.charAt(i)){
+				truth[row][col] = true;
+			}else{
+				truth[row][col] = false;
+			}
+		}
+		
+		int count = 0;
+		for(int r = 0; r < truth.length; r++){
+			for(int c = 0; c < truth[r].length; c++){
+				if(truth[r][c] == true){
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+	
+	/*
+	 * making sure that the current node is not expanded yet
+	 * boolean if yes else no
+	 */
+	public static boolean isclose(String s){
+		int outofplace = 0;
+		String tmpstate="";
+		Listnode move = close.Listhead.next;
+		while(move != null){
+			outofplace = 0;
+			tmpstate = move.data;
+			for(int i =0; i < s.length(); i++){
+				if(s.charAt(i) != tmpstate.charAt(i)){
+					outofplace++;
+				}
+			}
+			if(outofplace == 0){
+				return true;
+			}
+			move = move.next;
+		}
+		return false;
+	}
+	
+	
+	/*
+	 * computes the number of tiles thats false.  
+	 * calculates how many titles are currently misplaced. 
+	 */
+	public static int heuristicSearch(String d){
+		int count =0;
+		for(int i=0; i < GoalState.length(); i++){
+			if(i != 4 && d.charAt(i) != GoalState.charAt(i)){
+						count++;
+					}
+				}
+		return count;
+	}
+	
+	
+	/*
+	 * load cost into the 2-D array  
+	 */
+	public static void LoadManhattan(){
+		manhattan = new int [9][9];
+		int value = 0;
+		int row = 0, column = 0;
+		try{
+			Scanner x = new Scanner (new FileReader (path));
+			while (x.hasNext()){
+				value = x.nextInt();
+				manhattan[row][column++] = value;
+				if (column == 9){
+					row++;
+					column = 0;
+				}
+			}
+		}
+		catch (IOException ios){
+			ios.printStackTrace();
+			System.out.println("error in path file");
+		}
+	}
+	
+	/*
+	 * using the distance between manhattan's cost and calculate 
+	 * the value from one title to another
+	 */
+	public static int manhattanSearch (String state){
+		int cal = 0;
+		for (int i = 0 ; i < GoalState.length(); i++){
+			if (GoalState.charAt(i) != state.charAt(i)){
+				for (int j = 0; j < GoalState.length(); j++){
+					if (GoalState.charAt(j) == state.charAt(i)){
+						cal = cal + manhattan[j][i];
+					}
+				}
+			}
+		}
+		return cal;
+	} 
+	
+	/*
+	 * tracking the empty-tile and see which way the empty tile can go to. 
+	 * once it is allow to go to a certain direction, we save that stage and place it
+	 * to the open for evaluation
+	 */
+	public static void move(int move, String currentState, int empty, int gcost, int manh, int ccost, int fcost, Listnode node){
+		String nextState ="";
+		
+		switch(move){
+		case 1:
+			nextState = currentState.substring(0,(0+empty))+currentState.charAt(empty+1)
+			+'0'+currentState.substring(empty+2);
+			manh = heuristicSearch(nextState);	
+			gcost = calcgcost(ccost);
+			fcost = calcfcost(gcost, manh);
+			if(isclose(nextState) == false && isopen(nextState) == false){
+				OpenState(nextState,gcost,fcost, node);
+			}
+			break;
+			
+		case 2:
+			nextState = currentState.substring(0, (0+empty))+currentState.substring(empty+3,
+			(empty+3 + 1))+currentState.substring(empty+1,(empty+1 + 2)) + '0' + currentState.substring(empty+4);
+			manh = heuristicSearch(nextState);
+			gcost = calcgcost(ccost);
+			fcost = calcfcost(gcost, manh);
+			if(isclose(nextState) == false && isopen(nextState) == false){
+				OpenState(nextState, gcost, fcost, node);
+			}
+			break;
+			
+		case 3:
+			nextState = currentState.substring(0,(0 + empty-1))+'0'+
+			currentState.charAt(empty-1)+currentState.substring(empty+1);
+			manh = heuristicSearch(nextState);
+			gcost = calcgcost(ccost);
+			fcost = calcfcost(gcost, manh);
+			if(isclose(nextState) == false && isopen(nextState) == false){
+				OpenState(nextState, gcost, fcost, node);
+			}
+			break;
+			
+		case 4:
+			nextState = currentState.substring(0, (0+empty-3))+'0'+
+			currentState.substring(empty-2,(empty-2+2))+currentState.charAt(empty-3)+
+			currentState.substring(empty+1);
+			manh = heuristicSearch(nextState);
+			gcost = calcgcost(ccost);
+			fcost = calcfcost(gcost, manh);
+			if(isclose(nextState)== false && isopen(nextState) == false){
+				OpenState(nextState, gcost, fcost, node);
+			}
+			break;
+		default:
+		}
+	}
+	
+	/*
+	 * allow user to use different methods for checking path
+	 */
+	public static void checklock(boolean L1, boolean L2){
+		if ((L1 == true && L2 == true) || L1 == false && L2 == false){
+			System.out.println("can't have both lock being the same");
+			System.exit(0);
+		}
+		
+	}
+	
+	/*
+	 * A* manhantan algorthm, calculates different states and find the shortest path 
+	 * to goal state, expending necessay nodes. 
+	 */
+	
+	public static void AstarManhattan(String input){
+		boolean lock10 = false;
+		boolean lock20 = false;
+		if (input.equalsIgnoreCase("manhattan")){
+			lock10 = true;
+		}
+		else if (input.equalsIgnoreCase("heuristic")){
+			lock20 = true;
+		}
+		checklock(lock10, lock20);
+			long StartTime = System.currentTimeMillis();
+			int gcost = 0;
+			int manh = 0;
+			int fcost = 0;
+			int ccost = 0;
+			int empty = 0;
+			if (lock20){
+				manh = heuristicSearch(start);
+			}
+			if (lock10){
+				manh = manhattanSearch(start);
+			}
+			OpenState(start, gcost, manh, null);
+			String currentState="";
+			while(open.Listhead.next != null){
+				numCount++;
+				Listnode node = open.Listhead.next;
+				currentState = node.data;
+				if (lock20){
+					manh = heuristicSearch(currentState);
+				}
+				if (lock10){
+					manh = manhattanSearch(currentState);
+				}
+				
+				ccost = node.gcost;
+				fcost = node.fcost;
+				if(manh == 0){
+					calculatingpath(node);
+					print();
+					System.out.println("Successful in Reaching Goal!!!!");
+					System.out.println("Total Number of Node Expended: " + numCount);
+					break;
+				}
+				else{
+					Listnode headnode = open.Listhead.next;
+					open.Listhead.setNext(headnode.next);
+					Listnode newnode = new Listnode(currentState, ccost, fcost, node);
+					Listnode move = close.Listhead;
+					while(move.next != null){
+						move = move.next;
+					}
+					newnode.setNext(move.next);
+					move.setNext(newnode);
+					for(int i = 0; i <= currentState.length(); i++){
+						if(currentState.charAt(i) == '0'){
+							empty = i;
+							break;
+						}
+					}
+					switch(empty){
+					case 0:
+						move(1, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(2, currentState, empty, gcost, manh, ccost, fcost, node);
+						
+						break;
+					case 1:
+						move(1, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(2, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(3, currentState, empty, gcost, manh, ccost, fcost, node);
+						
+						break;
+					case 2:
+						move(2, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(3, currentState, empty, gcost, manh, ccost, fcost, node);
+						
+						break;
+					case 3:
+						move(1, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(2, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(4, currentState, empty, gcost, manh, ccost, fcost, node);
+	
+						break;
+					case 4:
+						move(1, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(2, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(3, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(4, currentState, empty, gcost, manh, ccost, fcost, node);
+						
+						break;
+					case 5:
+						move(2, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(3, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(4, currentState, empty, gcost, manh, ccost, fcost, node);
+						
+						break;
+					case 6:
+						move(1, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(4, currentState, empty, gcost, manh, ccost, fcost, node);
+						break;
+					case 7:
+						move(1, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(3, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(4, currentState, empty, gcost, manh, ccost, fcost, node);
+						break;
+					case 8:
+						move(3, currentState, empty, gcost, manh, ccost, fcost, node);
+						move(4, currentState, empty, gcost, manh, ccost, fcost, node);
+						break;
+					}
+					
+					
+				}
+			}
+			
+			long endTime = System.currentTimeMillis();
+			System.out.println("Elapsed time: " + (endTime - StartTime)/1000.0D + "seconds");
+			
+		}
+	
+	/*
+	 * method to calculate the fcost 
+	 */
+	
+	public static int calcfcost(int gcost, int manh){
+		return gcost + manh;
+	}
+	
+	/*
+	 * method to calculate the gcost
+	 */
+	public static int calcgcost(int ccost){
+	return ccost + 1;	
+	}
+}
+
+/*
+ * class of linked list, use for iterating through out the states. 
+ */
+public class LinkedList extends EightPuzzle {
+	public Listnode Listhead;
+	public Listnode dummynode;
+	
+	public LinkedList(){
+		dummynode = new Listnode();
+		Listhead = dummynode;
+	}
+	
+}
+
+/*
+ * class ListNode, use for linked list
+ */
+public class Listnode{
+	public String data;
+	public Listnode parent;
+	public Listnode next;
+	public int gcost;
+	public int fcost;
+	
+	public Listnode() {
+		this.data = "";
+		this.parent = null;
+		this.next = null;
+		this.fcost = 0;
+		this.gcost = 0;
+	}
+	
+	public Listnode(String d, int current, int future, Listnode p){
+		this.data = d;
+		this.gcost = current;
+		this.fcost = future;
+		this.next = null;
+		this.parent = p;
+	}
+	
+	public Listnode(String p){
+		this.data = p;
+		this.gcost = 0;
+		this.fcost = 0;
+		this.next = null;
+		
+	}
+	
+    public void setNext(Listnode n){
+        this.next = n;
+    }
+    
+	
+    public void setdata(String p){
+        this.data = p;
+    }
+}
+    
+    import java.io.FileReader;
+import java.util.Scanner;
+
+import javax.swing.JOptionPane;
+
+public class main{   // main class
+	
+	static int [][] manhattan;
+	static String start;	// starting state
+	static String easy, medium, hard, worst, path; // strings to link files
+	static String GoalState;  // final state
+	static LinkedList open;  // creating a* linked list 
+	static LinkedList close; // final a* linked list
+	static LinkedList p;
+	static boolean lock;  // true or false for createlink method
+	static int numCount;
+	
+		public static void main(String [] args){
+			
+			
+			EightPuzzle.createlink(args);
+			String input = JOptionPane.showInputDialog("Please Enter the Level of the game!");
+			if (input.equalsIgnoreCase("easy")){
+				EightPuzzle.readPuzzle(easy);
+				String in = JOptionPane.showInputDialog("Please Enter the method number, manhattan/heuristic");
+				if (in.equalsIgnoreCase("manhattan")){
+					EightPuzzle.AstarManhattan(in);
+				}
+			}
+			else if (input.equalsIgnoreCase("medium")){
+				EightPuzzle.readPuzzle(medium);
+				String in = JOptionPane.showInputDialog("Please Enter the method number, manhattan/heuristic");
+				if (in.equalsIgnoreCase("manhattan")){
+					EightPuzzle.AstarManhattan(in);
+					}
+			}
+			else if (input.equalsIgnoreCase("hard")){
+				EightPuzzle.readPuzzle(hard);
+				String in = JOptionPane.showInputDialog("Please Enter the method number, manhattan/heuristic");
+				if (in.equalsIgnoreCase("manhattan")){
+					EightPuzzle.AstarManhattan(in);
+				}
+			}
+			else if (input.equalsIgnoreCase("worst")){
+				EightPuzzle.readPuzzle(worst);
+				String in = JOptionPane.showInputDialog("Please Enter the method number, manhattan/heuristic");
+				if (in.equalsIgnoreCase("manhattan")){
+					EightPuzzle.AstarManhattan(in);
+				}
+			}
+			else if (input.equalsIgnoreCase("Make my own")){
+				lock = true;
+				EightPuzzle.MakingGoalState();
+			}
+			else { System.out.println("Type only easy or medium or hard or worst or make my own");
+			}
+		
+		}
+	}
+
+  
+
+
+
+
